@@ -1,0 +1,10 @@
+{
+    "site_name": "Test Blog",
+    "welcome_text": "Hello, this is BetterBlog, totally secure and not buggy blogging platform.",
+    "database_host": "a",
+    "database_user": "a",
+    "database_password": "a",
+    "database_name": "a",
+    "backup_user": "admin",
+    "backup_password": "admin"
+}
