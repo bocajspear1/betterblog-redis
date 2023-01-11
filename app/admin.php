@@ -18,6 +18,14 @@
             file_put_contents("./config.json", $new_json);
         } elseif ($action == "upload") {
 
+            $destination = $_POST['dest_dir'] . "/" . basename($_FILES["upload_file"]["name"]);
+            if (move_uploaded_file($_FILES["upload_file"]["tmp_name"], $destination)) {
+                echo "Upload OK";
+            } else {
+                echo "Upload failed!";
+            }
+            $action = "files";
+
         } elseif ($action == "savepage") {
             $page = $_POST['path'];
             $content = $_POST['pagecontent'];
@@ -83,6 +91,38 @@
 
 
             $action = 'posts';
+        } elseif ($action == "newuser") {
+            if ($DB_AVAILABLE) {
+                $query = "INSERT INTO users (username, password) VALUES ('" . $_POST['username'] . "', '" . $_POST['password'] . "')";
+                $result = $mysqli->query($query);
+            }
+            $action = 'users';
+        } elseif ($action == "deleteuser") {
+            if ($DB_AVAILABLE) {
+                $result = $mysqli->query("DELETE FROM users WHERE username='" . $_POST['username'] . "'");
+                $action = 'users';
+            }
+        } elseif ($action == "updatepassword") {
+            if ($DB_AVAILABLE) {
+                $result = $mysqli->query("UPDATE users SET password='" . $_POST['password'] . "' WHERE username='" . $_SESSION['logged_in_user'] . "'");
+                $action = 'users';
+            }
+        } elseif ($action == "ping") {
+            echo "<pre>";
+            echo "$ ping " . $_POST['pinghost'] . "\n";
+            passthru('ping ' . $_POST['pinghost']);
+            echo "</pre>";
+            $action = 'tools';
+        } elseif ($action == "getusage") {
+            
+            $total = 0;
+            foreach ($_POST['dirs'] as $dir) {
+                $output = exec('du -d 1 -m ' . $dir);
+                $amount = explode("\t", $output)[0];
+                $total += (int)$amount;
+            }
+            echo "<pre>Disk usage is " . $total . " MB</pre>";
+            $action = 'tools';
         }
     }
 
@@ -95,7 +135,21 @@
             header("Content-disposition: attachment; filename=\"" . basename($_GET['path']) . "\""); 
             readfile($_GET['path']); 
             $action = "files";
+        } elseif ($action == "logout") {
+            $_SESSION['logged_in_user'] = "";
+            $protocol = ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] != 'off') || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
+            $actual_link = $protocol . "logout@$_SERVER[HTTP_HOST]/admin.php?loggedout=1";
+            header('Location: ' . $actual_link);
+        } elseif ($action == "delete") {
+            unlink($_GET['path']);
+            $action = "files";
         }
+    }
+
+    if (array_key_exists("loggedout", $_GET)) {
+        $protocol = ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] != 'off') || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
+            $actual_link = $protocol . "logout@$_SERVER[HTTP_HOST]/index.php?loggedout=1";
+            header('Location: ' . $actual_link);
     }
 ?>
 
@@ -181,6 +235,12 @@ if ((!array_key_exists('logged_in_user', $_SESSION)) || $_SESSION['logged_in_use
                         <li><a <?php if ($action=="files") { echo 'class="is-active"';} ?> href="admin.php?action=files">File Management</a></li>
                         <li><a <?php if ($action=="tools") { echo 'class="is-active"';} ?> href="admin.php?action=tools">Server Tools</a></li>
                     </ul>
+                    <p class="menu-label">
+                        Other
+                    </p>
+                    <ul class="menu-list">
+                        <li><a href="admin.php?action=logout">Logout</a></li>
+                    </ul>
                 </aside>
             </div>
             <div class="column is-9">
@@ -214,12 +274,7 @@ if ((!array_key_exists('logged_in_user', $_SESSION)) || $_SESSION['logged_in_use
                                 $content = htmlentities($content);
                                 $title = "Index";
                             }
-                            
 
-                            
-                            if ($DB_AVAILABLE) {
-
-                            }
                         ?>
                         <form action="admin.php" method="post">
                             <div class="field">
@@ -305,23 +360,31 @@ if ((!array_key_exists('logged_in_user', $_SESSION)) || $_SESSION['logged_in_use
                                 $content = file_get_contents($path); 
                             }
 
-                            $content_split = explode("\n", $content, 2);
-                            $content = htmlentities($content_split[1], ENT_QUOTES);
-                            $first_line = $content_split[0];
-                            $first_line = str_replace("<?php", "", $first_line);
-                            $first_line = str_replace("?>", "", $first_line);
-                            $first_split = explode(";", $first_line);
-                            foreach ($first_split as $split_item) {
-                                if (strpos($split_item, "PAGE") === 2) {
-                                    $title = str_replace("'", "", explode("=", $split_item)[1]);
-                                } elseif (strpos($split_item, "SUBTITLE") === 2) {
-                                    $subtitle = str_replace("'", "", explode("=", $split_item)[1]);
+                            if ($content != "") {
+                                $content_split = explode("\n", $content, 2);
+                                $content = htmlentities($content_split[1], ENT_QUOTES);
+                                $first_line = $content_split[0];
+                                $first_line = str_replace("<?php", "", $first_line);
+                                $first_line = str_replace("?>", "", $first_line);
+                                $first_split = explode(";", $first_line);
+                                foreach ($first_split as $split_item) {
+                                    if (strpos($split_item, "PAGE") === 2) {
+                                        $title = str_replace("'", "", explode("=", $split_item)[1]);
+                                    } elseif (strpos($split_item, "SUBTITLE") === 2) {
+                                        $subtitle = str_replace("'", "", explode("=", $split_item)[1]);
+                                    }
                                 }
                             }
-                            
 
                             if ($DB_AVAILABLE) {
-
+                                $query = "SELECT * FROM posts WHERE filename='" .$_GET['post'] . "'";
+                                $result = $mysqli->query($query);
+                                if ($result && $result->num_rows > 0) {
+                                    $data = $result->fetch_assoc();
+                                    $title = $data['title'];
+                                    $subtitle = $data['subtitle'];
+                                    $description = $data['description'];
+                                }
                             }
                         ?>
                         <form action="admin.php" method="post">
@@ -379,7 +442,22 @@ if ((!array_key_exists('logged_in_user', $_SESSION)) || $_SESSION['logged_in_use
                                 }
                             }
                         ?>
+                        
                         </ul>
+                        <form action="admin.php" method="get">
+                            <div class="field">
+                                <label class="label">New Post</label>
+                                <div class="control">
+                                    <input class="input" type="text" name="post">
+                                </div>
+                            </div>
+                            <div class="field is-grouped mt-3">
+                                <div class="control">
+                                    <input type="submit" class="button is-link" value="Create"/>
+                                    <input type="hidden" name="action" value="posts"> 
+                                </div>
+                            </div>
+                        </form>
                     
                     <?php endif?>
                 </div>
@@ -390,7 +468,84 @@ if ((!array_key_exists('logged_in_user', $_SESSION)) || $_SESSION['logged_in_use
                         A database must be enabled for user management!
                         </div>
                     <?php else: ?>
+                        <div class="box">
+                        <h2 class="title is-h2">User Management</h2>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Username</th>
+                                        <th>Password</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+    
+                                <tbody>
+                                    <?php
+                                        $query = "SELECT * FROM users";
+                                        $result = $mysqli->query($query);
+                                        if ($result && $result->num_rows > 0) {
+                                            while ($data = $result->fetch_assoc()) {
+                                                echo "<tr>";
+                                                echo "<td>" . $data['username'] . "</td>";
+                                                echo "<td>" . $data['password'] . "</td>";
+                                                echo "<td><form action='admin.php' method='post'>";
+                                                echo "<input type='submit' class='button is-danger' value='Delete'/>";
+                                                echo "<input type='hidden' name='action' value='deleteuser'/>";
+                                                echo "<input type='hidden' name='username' value='" . $data['username'] . "'/>";
+                                                echo "</form></td>";
+                                                echo "<td>";
+                                            }
+                                            
+                                        }
+                                    ?>
+                                </tbody>
 
+                            </table>
+                        </div>
+                        <div class="box">
+                            <h2 class="title is-h2">New User</h2>
+                            <form action="admin.php" method="post">
+                                <div class="field">
+                                    <label class="label">Username</label>
+                                    <div class="control">
+                                        <input class="input" type="text" name="username">
+                                    </div>
+                                </div>
+                                <div class="field">
+                                    <label class="label">Password</label>
+                                    <div class="control">
+                                        <input class="input" type="text" name="password">
+                                    </div>
+                                </div>
+
+                                <div class="field is-grouped">
+                                    <div class="control">
+                                        <input type="submit" class="button is-link" value="Submit"/>
+                                        <input type="hidden" name="action" value="newuser"/>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="box">
+                            <h2 class="title is-h2">Set My Password</h2>
+                            <form action="admin.php" method="post">
+                                <div class="field">
+                                    <label class="label">New Password</label>
+                                    <div class="control">
+                                        <input class="input" type="text" name="password">
+                                    </div>
+                                </div>
+
+                                <div class="field is-grouped">
+                                    <div class="control">
+                                        <input type="submit" class="button is-link" value="Submit"/>
+                                        <input type="hidden" name="action" value="updatepassword"/>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                        
                     <?php endif?>
                 <?php elseif ($action == "config"): ?>
                 <h2 class="title is-h2">Configuration</h2>
@@ -436,15 +591,69 @@ if ((!array_key_exists('logged_in_user', $_SESSION)) || $_SESSION['logged_in_use
                             if (is_dir($fullpath)) {
                                 echo "<li><a href=\"admin.php?action=files&dir=$item\">$item/</a></li>\n";
                             } else {
-                                echo "<li>$item&nbsp;&nbsp;<a href=\"admin.php?action=download&path=$fullpath\"><i class=\"fas fa-download\"></i></a>&nbsp;&nbsp;<a href=\"admin.php?action=delete&path=$fullpath\"><i class=\"fas fa-trash\"></i></a></li>\n";
+                                echo "<li>$item&nbsp;&nbsp;<a href=\"admin.php?action=download&path=$fullpath\"><i class=\"fas fa-download\"></i></a>&nbsp;&nbsp;<a href=\"admin.php?action=delete&path=$fullpath\"><i class=\"fa fa-trash\"></i></a></li>\n";
                             }
                             
                         }
                         echo "</ul>";
                     ?>
+
+                        <div class="box">
+                            <form action="admin.php" method="post" enctype="multipart/form-data">
+                                Select image to upload:
+                                <input type="file" name="upload_file" id="upload_file">
+                                <input type="submit" value="Upload">
+                                <input type="hidden" value="upload" name="action">
+                                <input type="hidden" value="<?php echo $_SESSION['dir']; ?>" name="dest_dir">
+                            </form>
+                        </div>
+                                        
                     </div>
                 <?php elseif ($action == "tools"): ?>
                 <h2 class="title is-h2">Tools</h2>
+
+                <div class="box">
+                    <form action="admin.php" method="post">
+                        <div class="field">
+                            <label class="label">Ping</label>
+                            <div class="control">
+                                <input class="input" type="text" name="pinghost">
+                            </div>
+                        </div>
+
+                        <div class="field is-grouped">
+                            <div class="control">
+                                <input type="submit" class="button is-link" value="Ping"/>
+                                <input type="hidden" name="action" value="ping"/>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="box">
+                    <form action="admin.php" method="post">
+                        <div class="field">
+                            <label class="label">Get Disk Usage</label>
+                            <div class="control">
+                                <label class="checkbox">
+                                    <input type="checkbox" name="dirs[]" value="pages">
+                                    pages
+                                </label>
+                                <label class="checkbox">
+                                    <input type="checkbox" name="dirs[]" value="posts">
+                                    posts
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="field is-grouped">
+                            <div class="control">
+                                <input type="submit" class="button is-link" value="Submit"/>
+                                <input type="hidden" name="action" value="getusage"/>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
                 <?php else:?>
                     <div class="notification is-danger">
                     Invalid action

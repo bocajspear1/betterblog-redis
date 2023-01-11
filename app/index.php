@@ -46,8 +46,8 @@
                                     $display = str_replace("-", " ", $display);
                                     $display = str_replace("_", " ", $display);
                                     $display = ucwords($display);
-                                    echo $nav_page;
-                                    echo $page;
+                                    // echo $nav_page;
+                                    // echo $page;
                                     if ($nav_page == $page) {
                                         echo "<a class=\"navbar-item is-active\" href=\"index.php?page=$nav_page\">$display</a>";
                                     } else {

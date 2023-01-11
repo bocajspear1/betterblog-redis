@@ -2,8 +2,8 @@
     "site_name": "Test Blog",
     "welcome_text": "Hello, this is BetterBlog, totally secure and not buggy blogging platform.",
     "database_host": "",
-    "database_user": "betterblog",
-    "database_password": "betterblog",
+    "database_user": "admin",
+    "database_password": "hackathon",
     "database_name": "betterblog",
     "backup_user": "admin",
     "backup_password": "admin"

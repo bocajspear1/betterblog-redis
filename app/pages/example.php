@@ -1,4 +1,4 @@
-<?php $PAGE='Example'; include("../include/pageheader.php");?>
+<?php $PAGE='Example2'; include("../include/pageheader.php");?>
 <p>
     This is an example page!
 </p>
