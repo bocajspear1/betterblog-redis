@@ -1,3 +1,8 @@
+## BetterBlog
+
+A definitely not buggy and insecure PHP blogging platform! Works even without a database too, though if you want better features, enable a database.
+
+I might need to do a bit of work to secure this some day, so don't put this on anything valuable right now...
 
 ## Developing with Docker
 
