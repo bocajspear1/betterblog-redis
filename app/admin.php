@@ -454,9 +454,9 @@ if ((!array_key_exists('logged_in_user', $_SESSION)) || $_SESSION['logged_in_use
                                     continue;
                                 }
                                 if ($DB_AVAILABLE) {
-                                    echo "<li><a href=\"admin.php?action=posts&post=$post_item\">$post_item</a>";
+                                    echo "<li><a href=\"admin.php?action=posts&post=$post_item\">$post_item</a>&nbsp;&nbsp;<a href=\"admin.php?action=removepost&path=$post_item\"><i class=\"fa fa-trash\"></i></a></li>";
                                 } else {
-                                    echo "<li><a href=\"admin.php?action=posts&post=$post_item\">$post_item</a>";
+                                    echo "<li><a href=\"admin.php?action=posts&post=$post_item\">$post_item</a>&nbsp;&nbsp;<a href=\"admin.php?action=removepost&path=$post_item\"><i class=\"fa fa-trash\"></i></a></li>";
                                 }
                             }
                         ?>
