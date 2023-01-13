@@ -143,6 +143,24 @@
         } elseif ($action == "delete") {
             unlink($_GET['path']);
             $action = "files";
+        } elseif ($action == "removepage") {
+            $page = $_GET['path'];
+            
+            $query = "DELETE FROM pages WHERE filename='$page'";
+            $mysqli->query($query);
+
+            unlink("pages/" . $page);
+
+            $action = 'pages';
+        } elseif ($action == "removepost") {
+            $post = $_GET['path'];
+            
+            $query = "DELETE FROM posts WHERE filename='$post'";
+            $mysqli->query($query);
+
+            unlink("posts/" . $post);
+            
+            $action = 'posts';
         }
     }
 
@@ -313,9 +331,9 @@ if ((!array_key_exists('logged_in_user', $_SESSION)) || $_SESSION['logged_in_use
                                     continue;
                                 }
                                 if ($DB_AVAILABLE) {
-                                    echo "<li><a href=\"admin.php?action=pages&page=$page_item\">$page_item</a>";
+                                    echo "<li><a href=\"admin.php?action=pages&page=$page_item\">$page_item</a>&nbsp;&nbsp;<a href=\"admin.php?action=removepage&path=$page_item\"><i class=\"fa fa-trash\"></i></a></li>";
                                 } else {
-                                    echo "<li><a href=\"admin.php?action=pages&page=$page_item\">$page_item</a>";
+                                    echo "<li><a href=\"admin.php?action=pages&page=$page_item\">$page_item</a>&nbsp;&nbsp;<a href=\"admin.php?action=removepage&path=$page_item\"><i class=\"fa fa-trash\"></i></a></li>";
                                 }
 
                             }
