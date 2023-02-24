@@ -61,7 +61,7 @@
             $title = $_POST['title'];
             $subtitle = $_POST['subtitle'];
             $author = $_SESSION['logged_in_user'];
-            $lastedit = date(DATE_RFC2822);
+            $lastedit = date(DATE_ISO8601);
             $description = "";
             if (array_key_exists('description', $_POST)) {
                 $description = $_POST['description'];
@@ -361,6 +361,8 @@ if ((!array_key_exists('logged_in_user', $_SESSION)) || $_SESSION['logged_in_use
                     <?php if (!$DB_AVAILABLE): ?>
                         <div class="notification is-danger">
                         Enable database to get a better post listings and better features!
+                        <br>
+                        Be sure to re-save articles so they appear in the database!
                         </div>
                     <?php endif?>
                     <div class="content">

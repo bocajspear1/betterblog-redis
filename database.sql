@@ -58,7 +58,7 @@ CREATE TABLE `posts` (
 --
 
 INSERT INTO `posts` (`filename`, `title`, `subtitle`, `description`, `author`, `last_modified`) VALUES
-('example.php', 'Example', 'A Test Post', 'A very nice description', 'admin', 'Wed, 28 Sep 2022 01:10:41 +0000');
+('example.php', 'Example', 'A Test Post', 'A very nice description', 'admin', '2023-02-24T01:21:34+0000');
 
 -- --------------------------------------------------------
 
