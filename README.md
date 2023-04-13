@@ -9,8 +9,8 @@ I might need to do a bit of work to secure this some day, so don't put this on a
 Ensure Docker is installed!
 
 ```
-docker build -t betterblog .
-docker run --rm -it --name betterblog-test -v`pwd`/app:/var/www/html betterblog
+docker build -t betterblog-redis .
+docker run --rm -it --name betterblog-test -v`pwd`/app:/var/www/html betterblog-redis
 ```
 
 ## Notes

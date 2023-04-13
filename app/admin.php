@@ -37,20 +37,8 @@
             file_put_contents("pages/" . $page, $content);
 
             if ($DB_AVAILABLE) {
-                $query = "SELECT * FROM pages WHERE filename='$page'";
-                $result = $mysqli->query($query);
-
-                if (!$result) {
-                    echo "<div class=\"notification is-danger\">Failed to query: (" . $mysqli->errno . ") " . $mysqli->error . "</div>";
-                } else {
-                    $query = "";
-                    if ($result->num_rows > 0) {
-                        $query = "UPDATE pages SET title='$title' WHERE filename='$page'";
-                    } else {
-                        $query = "INSERT INTO pages (filename, title) VALUES ('$page', '$title')";
-                    }
-                    $result = $mysqli->query($query);
-                }
+                $redis->hSet("page_" . $page, "filename", $page);
+                $redis->hSet("page_" . $page, "title", $title);
             }
 
 
@@ -73,40 +61,32 @@
             file_put_contents("posts/" . $post, $content);
 
             if ($DB_AVAILABLE) {
-                $query = "SELECT * FROM posts WHERE filename='$post'";
-                $result = $mysqli->query($query);
-
-                if (!$result) {
-                    echo "<div class=\"notification is-danger\">Failed to query: (" . $mysqli->errno . ") " . $mysqli->error . "</div>";
-                } else {
-                    $query = "";
-                    if ($result->num_rows > 0) {
-                        $query = "UPDATE posts SET title='$title',subtitle='$subtitle',description='$description',author='$author',last_modified='$lastedit' WHERE filename='$post'";
-                    } else {
-                        $query = "INSERT INTO posts (filename, title, subtitle, description, author, last_modified) VALUES ('$post', '$title', '$subtitle', '$description', '$author', '$lastedit')";
-                    }
-                    $result = $mysqli->query($query);
-                }
+                $redis->sAdd("posts", "post_" . $post);
+                $redis->hSet("post_" . $post, "filename", $post);
+                $redis->hSet("post_" . $post, "title", $title);
+                $redis->hSet("post_" . $post, "subtitle", $subtitle);
+                $redis->hSet("post_" . $post, "description", $description);
+                $redis->hSet("post_" . $post, "author", $author);
+                $redis->hSet("post_" . $post, "last_modified", $lastedit);
             }
 
 
             $action = 'posts';
         } elseif ($action == "newuser") {
             if ($DB_AVAILABLE) {
-                $query = "INSERT INTO users (username, password) VALUES ('" . $_POST['username'] . "', '" . $_POST['password'] . "')";
-                $result = $mysqli->query($query);
+                $redis->set("user_" . $_POST['username'] , $_POST['password']);
             }
             $action = 'users';
         } elseif ($action == "deleteuser") {
             if ($DB_AVAILABLE) {
-                $result = $mysqli->query("DELETE FROM users WHERE username='" . $_POST['username'] . "'");
-                $action = 'users';
+                $redis->delete("user_" . $_POST['username']);
             }
+            $action = 'users';
         } elseif ($action == "updatepassword") {
             if ($DB_AVAILABLE) {
-                $result = $mysqli->query("UPDATE users SET password='" . $_POST['password'] . "' WHERE username='" . $_SESSION['logged_in_user'] . "'");
-                $action = 'users';
+                $redis->set("user_" . $_SESSION['logged_in_user'] , $_POST['password']);
             }
+            $action = 'users';
         } elseif ($action == "ping") {
             echo "<pre>";
             echo "$ ping " . $_POST['pinghost'] . "\n";
@@ -146,8 +126,7 @@
         } elseif ($action == "removepage") {
             $page = $_GET['path'];
             
-            $query = "DELETE FROM pages WHERE filename='$page'";
-            $mysqli->query($query);
+            $redis->delete("page_" . $page);
 
             unlink("pages/" . $page);
 
@@ -155,8 +134,7 @@
         } elseif ($action == "removepost") {
             $post = $_GET['path'];
             
-            $query = "DELETE FROM posts WHERE filename='$post'";
-            $mysqli->query($query);
+            $$redis->delete("post_" . $post);
 
             unlink("posts/" . $post);
             
@@ -190,16 +168,9 @@ if ((!array_key_exists('logged_in_user', $_SESSION)) || $_SESSION['logged_in_use
 
         $auth = false;
         if ($DB_AVAILABLE) {
-            $query = "SELECT * FROM users WHERE username='$username' AND password='$password'";
-
-            $result = $mysqli->query($query);
-
-            if (!$result) {
-                echo "<div class=\"notification is-danger\">Failed to query: (" . $mysqli->errno . ") " . $mysqli->error . "</div>";
-            } else {
-                if ($result->num_rows > 0) {
-                    $auth = true;
-                }
+            $result = $redis->get("user_" . $username);
+            if ($result && $result == $password) {
+                $auth = true;
             }
         }
 
@@ -397,14 +368,9 @@ if ((!array_key_exists('logged_in_user', $_SESSION)) || $_SESSION['logged_in_use
                             }
 
                             if ($DB_AVAILABLE) {
-                                $query = "SELECT * FROM posts WHERE filename='" .$_GET['post'] . "'";
-                                $result = $mysqli->query($query);
-                                if ($result && $result->num_rows > 0) {
-                                    $data = $result->fetch_assoc();
-                                    $title = $data['title'];
-                                    $subtitle = $data['subtitle'];
-                                    $description = $data['description'];
-                                }
+                                // $title = $redis->hGet("post_" . $_GET['post'], 'title');
+                                $subtitle = $redis->hGet("post_" . $_GET['post'], 'subtitle');
+                                $description = $redis->hGet("post_" . $_GET['post'], 'description');
                             }
                         ?>
                         <form action="admin.php" method="post">
@@ -502,20 +468,18 @@ if ((!array_key_exists('logged_in_user', $_SESSION)) || $_SESSION['logged_in_use
                                 <tbody>
                                     <?php
                                         $query = "SELECT * FROM users";
-                                        $result = $mysqli->query($query);
-                                        if ($result && $result->num_rows > 0) {
-                                            while ($data = $result->fetch_assoc()) {
-                                                echo "<tr>";
-                                                echo "<td>" . $data['username'] . "</td>";
-                                                echo "<td>" . $data['password'] . "</td>";
-                                                echo "<td><form action='admin.php' method='post'>";
-                                                echo "<input type='submit' class='button is-danger' value='Delete'/>";
-                                                echo "<input type='hidden' name='action' value='deleteuser'/>";
-                                                echo "<input type='hidden' name='username' value='" . $data['username'] . "'/>";
-                                                echo "</form></td>";
-                                                echo "<td>";
-                                            }
-                                            
+                                        $result = $redis->keys("user_*");
+                                        for ($i = 0; $i < count($result); $i++) {
+                                            $username = str_replace("user_", "", $result[$i]);
+                                            echo "<tr>";
+                                            echo "<td>" . $username . "</td>";
+                                            echo "<td>" . $redis->get($result[$i]) . "</td>";
+                                            echo "<td><form action='admin.php' method='post'>";
+                                            echo "<input type='submit' class='button is-danger' value='Delete'/>";
+                                            echo "<input type='hidden' name='action' value='deleteuser'/>";
+                                            echo "<input type='hidden' name='username' value='" . $username . "'/>";
+                                            echo "</form></td>";
+                                            echo "<td>";
                                         }
                                     ?>
                                 </tbody>

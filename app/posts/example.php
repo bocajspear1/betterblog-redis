@@ -1,4 +1,4 @@
-<?php $PAGE='Example';$SUBTITLE='A Test Post';$LASTEDIT='2023-02-24T01:21:34+0000';$AUTHOR='admin';include("../include/postheader.php");?>
+<?php $PAGE='Example';$SUBTITLE='This is Cool!';$LASTEDIT='2023-04-12T02:06:17+0000';$AUTHOR='test';include("../include/postheader.php");?>
 
 This is an example post.
 

@@ -64,15 +64,14 @@
                                 }
                                 
                             } else {
-                                $query = "SELECT * FROM pages";
-                                $result = $mysqli->query($query);
-                                while ($row = $result->fetch_assoc()) {
-                                    if ($row['filename'] == $page) {
-                                        echo "<a class=\"navbar-item is-active\" href=\"index.php?page=" . $row['filename'] . "\">" . $row['title'] . "</a>";
+                                $keys = $redis->keys("page_*");
+                                for ($i = 0; $i < count($keys); $i++) {
+                                    $key = $keys[$i];
+                                    if ($redis->hGet($key, 'filename') == $page) {
+                                        echo "<a class=\"navbar-item is-active\" href=\"index.php?page=" . $redis->hGet($key, 'filename') . "\">" . $redis->hGet($key, 'title') . "</a>";
                                     } else {
-                                        echo "<a class=\"navbar-item\" href=\"index.php?page=" . $row['filename'] . "\">" . $row['title'] . "</a>";
+                                        echo "<a class=\"navbar-item\" href=\"index.php?page=" . $redis->hGet($key, 'filename') . "\">" . $redis->hGet($key, 'title') . "</a>";
                                     }
-                                    
                                 }
                             }
                             echo '<a class="navbar-item" href="admin.php"><i class="fas fa-hammer"></i>&nbsp;Admin</a>';
@@ -139,12 +138,28 @@
                                 }
                             } else {
 
-                                $result = $mysqli->query("SELECT COUNT(filename) AS file_count FROM posts;");
-                                $group_count = (int)($result->fetch_array()["file_count"] / $pagination_size);
+                                $keys = $redis->keys("post_*");
+                                $group_count = (int)(count($keys) / $pagination_size);
+                                $group_count += 1;
+                                
 
-                                $query = "SELECT * FROM posts ORDER BY last_modified DESC LIMIT $pagination_size OFFSET " . ($offset * $pagination_size);
-                                $result = $mysqli->query($query);
-                                $dir_contents = $result->fetch_all(MYSQLI_ASSOC);
+                                $results = $redis->sort("posts", array(
+                                    "SORT" => "DESC",
+                                    "BY" => "*->last_modified",
+                                    "ALPHA" => true,
+                                    "LIMIT" => array(($offset * $pagination_size), $pagination_size)
+                                ));
+
+                                for ($i = 0; $i < count($results); $i++) {
+                                    $key = $results[$i];
+                                    $new_item = array(
+                                        "filename" => $redis->hGet($key, 'filename'), 
+                                        "title" => $redis->hGet($key, 'title'), 
+                                        "subtitle" => $redis->hGet($key, 'subtitle'), 
+                                        "description" => $redis->hGet($key, 'description')
+                                    );
+                                    array_push($dir_contents, $new_item);
+                                }
                             }   
 
 
